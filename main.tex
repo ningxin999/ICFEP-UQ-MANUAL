@@ -77,8 +77,8 @@
 \tableofcontents
 \listoflistings
 \newpage
-\section{Welcome to ICFEP-UQ guidance!}\label{ICFEP-UQ_setup}
-ICFEP-UQ is a general purpose and Matlab-based toolbox for modelling uncertainty in physical and mathematical systems. The application of the code can be generalized to ABAQUS/PLAXIS/etc and all kinds of engineering problems. The code is organized as a set of modules centered around core capabilities in Uncertainty Quantification (UQ).
+\section{Welcome to ICUQ guidance!}\label{ICFEP-UQ_setup}
+ICUQ is a general purpose and Matlab-based toolbox for modelling uncertainty in physical and mathematical systems. The application of the code can be generalized to ABAQUS/PLAXIS/etc and all kinds of engineering problems. The code is organized as a set of modules centered around core capabilities in Uncertainty Quantification (UQ).
 \begin{table}[htbp]
 \begin{tabular}{|l|l|}
 \hline
@@ -274,9 +274,9 @@ Connecting the reality with simulator $y \leftrightarrow \mathcal{M}(\boldsymbol
 \boldsymbol{y} = \mathcal{M}(\boldsymbol{x})
 + \boldsymbol{\varepsilon}
 \end{equation*}
-in which, $\boldsymbol{y}$ is the observation, $\mathcal{M}(\boldsymbol{x})$ is the model prediction and $\boldsymbol{\varepsilon}$ is the error term.
+in which, $\boldsymbol{y}$ is the observation, $\mathcal{M}(\boldsymbol{x})$ is the model prediction and $\boldsymbol{\varepsilon}$ is the observation error term. In this case, $\boldsymbol{\varepsilon}$ mainly comes from the instrument accuracy, systematic error and resolution error. Now we only consider instrument accuracy in which data used will be pre-processed by discarding the rest two errors.
 
-Normally, it is assumed that $\boldsymbol{\varepsilon}$ is following a zero-mean Gaussian distribution because of its simple and popular form $\boldsymbol{\varepsilon} \in \mathcal{N}(\boldsymbol{\varepsilon}|\boldsymbol{0},\boldsymbol{\Sigma})$. The covariance matrix $\boldsymbol{\Sigma}$ with $N$ outputs points can be simple as an identical matrix like:
+Normally, in most available geotechnical papers, it is assumed that $\boldsymbol{\varepsilon}$ is following a zero-mean Gaussian distribution because of its simple and popular form $\boldsymbol{\varepsilon} \in \mathcal{N}(\boldsymbol{\varepsilon}|\boldsymbol{0},\boldsymbol{\Sigma})$. The covariance matrix $\boldsymbol{\Sigma}$ with $N$ output points can be simple as an identical matrix like:
 \begin{equation}
 \label{eq: iid_general_discrepancy}
 \boldsymbol{\Sigma} = \sigma^2 \boldsymbol{I}=
@@ -293,13 +293,17 @@ or holding a more general form:
 \label{eq: general_discrepancy}
 \boldsymbol{\Sigma} = 
   \begin{bmatrix}
-\sigma_{11} & \sigma_{12} & \hdots      & \sigma_{1N} \\
-\sigma_{12} & \sigma_{22} & \hdots      & \sigma_{2N} \\
+\sigma_{11}^2 & \sigma_{12}^2 & \hdots      & \sigma_{1N}^2 \\
+\sigma_{12}^2 & \sigma_{22}^2 & \hdots      & \sigma_{2N}^2 \\
 \vdots      & \vdots      & \ddots      & \vdots \\
-\sigma_{N1} & \sigma_{N2} & \hdots      & \sigma_{NN}
+\sigma_{N1}^2 & \sigma_{N2}^2 & \hdots      & \sigma_{NN}^2
 \end{bmatrix}    
 \end{equation}
-The discrepancy $\boldsymbol{\varepsilon}$ follows a Gaussian distribution with unknown residuals variance $\boldsymbol{\Sigma}$. Likelihood function $\mathcal{L}$ can be expressed as:
+The difference between \Cref{eq: iid_general_discrepancy} and \Cref{eq: general_discrepancy} is that \Cref{eq: iid_general_discrepancy} can be controlled by a single parameter $\sigma$, which is very convenient. However, this also brings a challenge that all connections between $N$ outputs in the error term are lost, as seen the non-diagonal elements are zero.
+
+
+
+Now we need to consider all types of errors (including observation error $\boldsymbol{\varepsilon}$) in the likelihood functions $\mathcal{L}$, so it is necessary to know how likelihood function works. Assume that the discrepancy $\boldsymbol{\varepsilon}$ follows a Gaussian distribution with unknown residuals variance $\boldsymbol{\Sigma}$, likelihood function $\mathcal{L}$ can be then expressed as:
 \begin{equation}        
         \label{eq: Likelihood function}
 \begin{aligned}
@@ -308,16 +312,24 @@ The discrepancy $\boldsymbol{\varepsilon}$ follows a Gaussian distribution with 
  (\boldsymbol{\Sigma})}}\exp\left(-\frac{1}{2}\left(\boldsymbol{y}  - \mathcal{M}(\boldsymbol{x})\right)^{\mathsf{T}} \boldsymbol{\Sigma}^{-1}\left(\boldsymbol{y}  - \mathcal{M}(\boldsymbol{x})\right)\right)
 \end{aligned}
 \end{equation}
-Note: $\boldsymbol{y}$ is an observation vector, which is different from FE prediction $\boldsymbol{\mathsf{y}} = \mathcal{M}(\boldsymbol{x})$.
+Note: $\boldsymbol{y}$ is an observation vector, which is different from FE prediction $\boldsymbol{\mathsf{y}} = \mathcal{M}(\boldsymbol{x})$. The derivation for \Cref{eq: Likelihood function} is nothing but a simple substitution based on \href{https://en.wikipedia.org/wiki/Normal_distribution}{this}.
 
-In \Cref{eq: iid_general_discrepancy}, $\boldsymbol{\varepsilon}$ is non-informative, thus, its prior for the variance $\sigma$ follows uniform distribution $\sigma\sim \mathcal{U}$(0,$\sigma_{0}^2$), in which $\sigma_{0}^2$ should be related to the observation values (e.g., mean or maximum). $\boldsymbol{\varepsilon}$ now can be considered as some additional priors $\boldsymbol{x^{\varepsilon}}$ along with forward parameters $\boldsymbol{x}^{\mathcal{M}}$ shown as \Cref{fig:figure-Sequential_Bayesian_updating}. UQlab default setting only supports \textit{iid} assumption as shown \Cref{eq: iid_general_discrepancy}, which is very unrealistic for most engineering problems. 
+In \Cref{eq: iid_general_discrepancy}, $\boldsymbol{\varepsilon}$ is non-informative, which means we dont know how much it should be, because normally it is not available how inaccurate the instrument/device is. Thus, parameters related to $\boldsymbol{\varepsilon}$ will be treated as priors along with inference. In \Cref{eq: iid_general_discrepancy}, there is only one parameter variance $\sigma$ unknown and we can assign a uniform prior $\sigma\sim \mathcal{U}$(0,$\sigma_{0}^2$), in which $\sigma_{0}^2$ should be related to the observation values (e.g., mean or maximum). This is a tricky part, because $\boldsymbol{x^{\varepsilon}}$ discrepancy is actually coming from the instrument accuracy, which we dont know. If we assign a very small value, it means there is smaller error and high confidence in the observation data we obtained. On the contrary, if we give a big value, we have less confidence in the data source. Obviously, the discrepancy term $\boldsymbol{x^{\varepsilon}}$ will influence the calibration process.
+
+
+
+
+$\boldsymbol{\varepsilon}$ now can be considered as some additional priors $\boldsymbol{x^{\varepsilon}}$ along with forward parameters $\boldsymbol{x}^{\mathcal{M}}$ (e.g., soil parameters) shown as \Cref{fig:figure-Sequential_Bayesian_updating}. UQlab package default setting only supports \textit{iid} assumption as shown \Cref{eq: iid_general_discrepancy}, which is very unrealistic for most engineering problems. 
  \begin{figure}[htbp]
     \centering
     \includegraphics[width = 90mm]{figures/figure-Sequential_Bayesian_updating.pdf}
     \caption{Sequential parameter updating}
     \label{fig:figure-Sequential_Bayesian_updating}
 \end{figure}
-Because \textit{iid} assumption will lose all connections inside the discrepancy term. \textit{Kernel methods} are good ways to capture the connections within the covariance matrix $\boldsymbol{\Sigma}$ in $\boldsymbol{x^{\varepsilon}}$, such as:
+Because \textit{iid} assumption will lose all connections inside the discrepancy term. 
+
+
+Because of the shortage of \Cref{eq: iid_general_discrepancy}, we need to have a closer look at \Cref{eq: general_discrepancy} and how can we achieve this general form. In ICUQ, \textit{Kernel methods} are used to capture the connections within the covariance matrix $\boldsymbol{\Sigma}$ in $\boldsymbol{x^{\varepsilon}}$, such as:
  \begin{figure}[htbp]
     \centering
     \includegraphics[width = 90mm]{figures/figure-kernel.pdf}
@@ -325,7 +337,40 @@ Because \textit{iid} assumption will lose all connections inside the discrepancy
     \label{fig:figure-kernel}
 \end{figure}
 
-\textbf{Things are not done yet}. Even we know the the connection of discrepancy $\boldsymbol{x^{\varepsilon}}$ can be reproduced by \textit{kernel methods}. But we still need to give values for initial prior distributions to $\boldsymbol{x^{\varepsilon}}$. \textit{Kernel methods} can only reproduce the connections within the $\boldsymbol{x^{\varepsilon}}$ rather than the absolute magnitude. This is a tricky part, because $\boldsymbol{x^{\varepsilon}}$ discrepancy is actually coming from the instrument accuracy, which we dont know. If we assign a very small value, it means there is smaller error and high confidence in the observation data we obtained. On the contrary, if we give a big value, we have less confidence in the data source. Obviously, the discrepancy term $\boldsymbol{x^{\varepsilon}}$ will influence the calibration process.
+So far, you need to have a google at what is kernel methods at \href{https://distill.pub/2019/visual-exploration-gaussian-processes/}{link1} or \href{https://smlbook.org/GP/}{link2}. Basically, $\textit{Kernels}$ will control the big covariance matrix $\boldsymbol{\Sigma}$ using two additional hyper parameters \textit{correlation length} $l$ and variance $\sigma$ as shown in \Cref{fig:figure-kernel}.
+
+
+
+\textbf{Things are not done yet}. Even we know the the connection of discrepancy $\boldsymbol{x^{\varepsilon}}$ can be reproduced by \textit{kernel methods}. But we still need to give values for initial prior distributions to $\boldsymbol{x^{\varepsilon}}$. \textit{Kernel methods} can only reproduce the connections within the $\boldsymbol{x^{\varepsilon}}$ rather than the absolute magnitude. 
+
+Based on \Cref{eq: general_discrepancy}:
+\begin{equation}
+\label{eq: kernel}
+        \Sigma_{ij} = \sigma_{i}\sigma_{j}R \\
+\end{equation}
+We need to know variance $\sigma$ and correlation matrix $R$:
+(1) $\sigma$ can be expressed as the summations of some simple polynomials as \Cref{eq: sigma polynomials}; (2) $R$ can acquired by some \textit{kernels} as shown in \Cref{fig:figure-kernel}:
+\begin{equation}
+\label{eq: sigma polynomials}
+\sigma_{i} := \sum_{k=0}^{p} \omega_{k} \times \psi_{k} \times t_{j}; i = \{1,\cdots,N\}
+\end{equation}
+\begin{equation}
+    t_{j} = mean(\mathcal{Y}_{j})
+\end{equation}
+in which, $\mathcal{Y}_{j}$ is observation for  different time stages $j$; $t_j$ is a scale factor related to different observation stages. $\omega_{k}$ is the hyper parameter to control the $\sigma$; $\psi_{k}$ is the polynomial basis; $p$ is the order of the polynomials.
+
+As a summary, we want to use a more general observation error term $\boldsymbol{\Sigma}$ in \Cref{eq: general_discrepancy} to consider the connections between $N$ observation points. Then we use $\textit{kernel methods}$ to reproduce this connections by introducing $\sigma$ and $R$ in \Cref{eq: kernel}. $\sigma$ is controlled by polynomial type functions in \Cref{eq: sigma polynomials} using hyper parameters -coefficients of polynomials $\boldsymbol{\omega} = (\omega_1,\cdots, \omega_p)$ and $R$ is controlled by hyper parameter in \Cref{fig:figure-kernel}-correlation length $l$. The reason why we need to introduce $t_{j} = mean(\mathcal{Y}_{j})$ is because engineering problems are conducted stage by stage and the instrument accuracy is changing along with time/stages. Thus, the error term $\boldsymbol{\varepsilon}$ is also changing with time/stages.
+
+
+
+
+
+
+
+
+
+
+
 
 \section{Example to get started}
 \subsection*{Problem statement}
